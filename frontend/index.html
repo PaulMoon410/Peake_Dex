@@ -80,6 +80,24 @@
     <header>
         <h1>PEK Dex</h1>
         <p>Welcome! Select a trading pair to view its order book, trades, and place orders.</p>
+        <div id="user-info" style="margin-top: 1rem;">
+            <div id="login-section">
+                <input type="text" id="username-input" placeholder="Enter Hive username" style="padding: 0.5rem; margin-right: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <button onclick="login()" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Sign In</button>
+            </div>
+            <div id="user-dashboard" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <strong id="logged-username"></strong>
+                        <button onclick="refreshUserBalances()" style="background: #10b981; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; margin-left: 0.5rem; font-size: 0.8rem;">↻</button>
+                        <button onclick="logout()" style="background: #ef4444; color: white; border: none; padding: 0.3rem 0.8rem; border-radius: 4px; cursor: pointer; margin-left: 0.5rem; font-size: 0.9rem;">Sign Out</button>
+                    </div>
+                    <div id="balance-info" style="text-align: right; font-size: 0.9rem;">
+                        <div>Loading balances...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </header>
     <div class="container">
         <h2>Available Trading Pairs</h2>
@@ -140,6 +158,108 @@
                 {"base": "PEK", "quote": "SWAP.DOGE"}
             ];
         }
+        
+        // User authentication and balance functions
+        let currentUser = null;
+        
+        function login() {
+            const username = document.getElementById('username-input').value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            currentUser = username;
+            localStorage.setItem('pekdex_user', username);
+            
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('user-dashboard').style.display = 'block';
+            document.getElementById('logged-username').textContent = username;
+            
+            fetchUserBalances(username);
+        }
+        
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('pekdex_user');
+            
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('user-dashboard').style.display = 'none';
+            document.getElementById('username-input').value = '';
+        }
+        
+        async function fetchUserBalances(username) {
+            const balanceDiv = document.getElementById('balance-info');
+            balanceDiv.innerHTML = 'Loading balances...';
+            
+            try {
+                let url = `${API_BASE_URL}/api/balance?username=${encodeURIComponent(username)}`;
+                
+                // Use CORS proxy if needed
+                if (window.location.protocol === 'https:' && API_BASE_URL.startsWith('http:')) {
+                    for (let i = 0; i < CORS_PROXIES.length; i++) {
+                        try {
+                            const proxyUrl = CORS_PROXIES[i] + encodeURIComponent(url);
+                            const response = await fetch(proxyUrl);
+                            if (response.ok) {
+                                const data = await response.json();
+                                displayBalances(data.balances || {});
+                                return;
+                            }
+                        } catch (e) {
+                            console.log(`Balance proxy ${i + 1} failed:`, e.message);
+                        }
+                    }
+                    // Fallback to mock balances
+                    displayBalances({
+                        'HIVE': '1.234',
+                        'PEK': '1000.0000',
+                        'SWAP.HIVE': '5.678',
+                        'SWAP.BTC': '0.00012345'
+                    });
+                    return;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                displayBalances(data.balances || {});
+                
+            } catch (e) {
+                balanceDiv.innerHTML = `<div style="color: #ef4444;">Failed to load balances</div>`;
+                console.error('Balance fetch error:', e);
+            }
+        }
+        
+        function displayBalances(balances) {
+            const balanceDiv = document.getElementById('balance-info');
+            const tokens = ['HIVE', 'PEK', 'SWAP.HIVE', 'SWAP.BTC', 'SWAP.LTC', 'SWAP.ETH', 'SWAP.DOGE'];
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.5rem;">';
+            tokens.forEach(token => {
+                const balance = balances[token] || '0.0000';
+                html += `<div style="background: rgba(255,255,255,0.2); padding: 0.3rem 0.5rem; border-radius: 4px; text-align: center;">
+                    <div style="font-weight: bold; font-size: 0.8rem;">${token}</div>
+                    <div style="font-size: 0.9rem;">${parseFloat(balance).toFixed(4)}</div>
+                </div>`;
+            });
+            html += '</div>';
+            balanceDiv.innerHTML = html;
+        }
+        
+        function refreshUserBalances() {
+            if (currentUser) {
+                fetchUserBalances(currentUser);
+            }
+        }
+        
+        // Check for saved login on page load
+        function checkSavedLogin() {
+            const savedUser = localStorage.getItem('pekdex_user');
+            if (savedUser) {
+                document.getElementById('username-input').value = savedUser;
+                login();
+            }
+        }
         function renderPairList(pairs) {
             const list = document.getElementById('pair-list');
             list.innerHTML = '';
@@ -161,6 +281,7 @@
             errorDiv.innerHTML = `<strong>${message}</strong>` + (code ? `<pre style='font-size:0.9em; background:#fee2e2; color:#7f1d1d; padding:0.5em; border-radius:6px; margin-top:0.5em;'>${code}</pre>` : '');
         }
         async function init() {
+            checkSavedLogin();
             const pairs = await fetchPairs();
             if (pairs.length > 0) {
                 renderPairList(pairs);

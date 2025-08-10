@@ -298,6 +298,66 @@ def api_validate_account():
     except Exception as e:
         return jsonify({'error': f'Validation failed: {str(e)}'}), 500
 
+@app.route('/api/balance')
+def api_get_balance():
+    username = request.args.get('username', '').strip()
+    
+    if not username:
+        return jsonify({'error': 'Username required'}), 400
+    
+    try:
+        # Validate account exists
+        if not validate_hive_account(username):
+            return jsonify({'error': 'Invalid Hive account'}), 400
+        
+        # Initialize Hive connection
+        hive = Hive()
+        account = Account(username, blockchain_instance=hive)
+        
+        balances = {}
+        
+        # Get HIVE balance
+        hive_balance = account.get_balance()
+        balances['HIVE'] = str(hive_balance['HIVE'])
+        
+        # Get Hive Engine tokens
+        try:
+            # Make request to Hive Engine API
+            he_url = f"https://api.hive-engine.com/rpc/contracts"
+            he_data = {
+                "jsonrpc": "2.0",
+                "method": "find",
+                "params": {
+                    "contract": "tokens",
+                    "table": "balances",
+                    "query": {"account": username},
+                    "limit": 1000
+                },
+                "id": 1
+            }
+            
+            response = requests.post(he_url, json=he_data)
+            if response.status_code == 200:
+                he_balances = response.json().get('result', [])
+                for token in he_balances:
+                    symbol = token.get('symbol')
+                    balance = token.get('balance', '0')
+                    if symbol in ['PEK', 'SWAP.HIVE', 'SWAP.BTC', 'SWAP.LTC', 'SWAP.ETH', 'SWAP.DOGE']:
+                        balances[symbol] = balance
+        except Exception as e:
+            print(f"Error fetching Hive Engine balances: {e}")
+        
+        # Ensure all expected tokens are present
+        expected_tokens = ['HIVE', 'PEK', 'SWAP.HIVE', 'SWAP.BTC', 'SWAP.LTC', 'SWAP.ETH', 'SWAP.DOGE']
+        for token in expected_tokens:
+            if token not in balances:
+                balances[token] = '0.0000'
+        
+        return jsonify({'username': username, 'balances': balances})
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch balances: {str(e)}'}), 500
+
 # API endpoints for FTP management
 
 @app.route('/api/ftp/config', methods=['POST'])

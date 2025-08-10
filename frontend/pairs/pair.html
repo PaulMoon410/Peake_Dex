@@ -23,6 +23,15 @@
 <body>
     <div class="container">
         <h1 id="pair-title"></h1>
+        <div id="user-balance" style="background: #f0f9ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <div><strong>Signed in as:</strong> <span id="current-user"></span></div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div id="pair-balances" style="font-size: 0.9rem;"></div>
+                    <button onclick="refreshBalances()" style="background: #10b981; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">↻</button>
+                </div>
+            </div>
+        </div>
         <form id="order-form" onsubmit="return handleOrder(event)">
             <label>Order Type:<br>
                 <select id="order-type">
@@ -46,7 +55,12 @@
         <h2>Recent Trades</h2>
         <div id="history"></div>
         <hr>
-        <a href="../index.html">Back to DEX Home</a>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="../index.html">← Back to DEX Home</a>
+            <div style="font-size: 0.9rem; color: #6b7280;">
+                Refresh balances after placing orders
+            </div>
+        </div>
     </div>
     <script>
         // Configuration - Update this to point to your server
@@ -82,16 +96,63 @@
         }
         const base = getQueryParam('base') || 'PEK';
         const quote = getQueryParam('quote') || 'SWAP.HIVE';
+        let currentUser = localStorage.getItem('pekdex_user');
+        
         document.getElementById('pair-title').textContent = `${base} / ${quote}`;
         document.getElementById('base-symbol').textContent = base;
         document.getElementById('base-symbol2').textContent = base;
         document.getElementById('quote-symbol').textContent = quote;
+        
+        // Show user info if logged in
+        if (currentUser) {
+            document.getElementById('user-balance').style.display = 'block';
+            document.getElementById('current-user').textContent = currentUser;
+            fetchPairBalances(currentUser);
+        }
+        
+        async function fetchPairBalances(username) {
+            const balanceDiv = document.getElementById('pair-balances');
+            balanceDiv.innerHTML = 'Loading...';
+            try {
+                let url = `${API_BASE_URL}/api/balance?username=${encodeURIComponent(username)}`;
+                const response = await fetchWithProxy(url);
+                const data = await response.json();
+                
+                if (data.error) {
+                    balanceDiv.innerHTML = `<span style="color: #ef4444;">${data.error}</span>`;
+                    return;
+                }
+                
+                const baseBalance = data.balances?.[base] || '0.0000';
+                const quoteBalance = data.balances?.[quote] || '0.0000';
+                
+                balanceDiv.innerHTML = `${base}: <strong>${parseFloat(baseBalance).toFixed(4)}</strong> | ${quote}: <strong>${parseFloat(quoteBalance).toFixed(4)}</strong>`;
+            } catch (e) {
+                balanceDiv.innerHTML = `${base}: <strong>0.0000</strong> | ${quote}: <strong>0.0000</strong>`;
+                console.error('Balance fetch error:', e);
+            }
+        }
+        
+        function refreshBalances() {
+            if (currentUser) {
+                fetchPairBalances(currentUser);
+            }
+        }
         async function handleOrder(event) {
             event.preventDefault();
             const type = document.getElementById('order-type').value;
             const amount = document.getElementById('order-amount').value;
             const price = document.getElementById('order-price').value;
-            const username = prompt('Enter your Hive username:');
+            
+            let username = currentUser;
+            if (!username) {
+                username = prompt('Enter your Hive username:');
+                if (!username) {
+                    document.getElementById('order-status').textContent = 'Username required to place order';
+                    return false;
+                }
+            }
+            
             const statusDiv = document.getElementById('order-status');
             statusDiv.textContent = 'Preparing order...';
             try {
@@ -124,6 +185,12 @@
                                 statusDiv.textContent = 'Order broadcasted!';
                                 fetchOrderBook();
                                 fetchHistory();
+                                // Refresh balances after successful order
+                                setTimeout(() => {
+                                    if (currentUser) {
+                                        fetchPairBalances(currentUser);
+                                    }
+                                }, 2000);
                             } else {
                                 statusDiv.textContent = 'Keychain transaction failed or cancelled.';
                             }
