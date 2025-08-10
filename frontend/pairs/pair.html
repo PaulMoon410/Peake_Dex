@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEK Dex Pair</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(120deg, #f8f8fa 0%, #e0e7ff 100%); margin: 0; padding: 0; }
+        .container { max-width: 700px; margin: 2.5rem auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px rgba(44,62,80,0.10); padding: 2.5rem 2rem 2rem 2rem; }
+        h1 { color: #2d3748; font-size: 2rem; margin-bottom: 0.5rem; }
+        h2 { color: #2d3748; margin-top: 2.5rem; margin-bottom: 1rem; }
+        label { font-weight: 500; color: #374151; }
+        input, select, button { font-size: 1rem; border-radius: 6px; border: 1px solid #bfc9d9; padding: 0.5rem 0.7rem; margin-top: 0.3rem; }
+        button { background: #6366f1; color: #fff; border: none; font-weight: 600; padding: 0.7rem 1.5rem; margin-top: 1rem; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #4338ca; }
+        #orderbook, #history, #order-status { margin-top: 1rem; font-size: 1rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: #f9fafb; border-radius: 8px; overflow: hidden; }
+        th, td { border: 1px solid #e5e7eb; padding: 0.6rem 0.5rem; text-align: left; }
+        th { background: #e0e7ff; color: #3730a3; }
+        hr { border: none; border-top: 1px solid #e5e7eb; margin: 2.5rem 0 2rem 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="pair-title"></h1>
+        <form id="order-form" onsubmit="return handleOrder(event)">
+            <label>Order Type:<br>
+                <select id="order-type">
+                    <option value="buy">Buy</option>
+                    <option value="sell">Sell</option>
+                </select>
+            </label><br><br>
+            <label>Amount (<span id="base-symbol"></span>):<br>
+                <input type="number" id="order-amount" min="0.0001" step="0.0001" required>
+            </label><br><br>
+            <label>Price per <span id="base-symbol2"></span> (<span id="quote-symbol"></span>):<br>
+                <input type="number" id="order-price" min="0.00000001" step="0.00000001" required>
+            </label><br><br>
+            <button type="submit">Place Order</button>
+        </form>
+        <div id="order-status"></div>
+        <hr>
+        <h2>Order Book</h2>
+        <div id="orderbook"></div>
+        <hr>
+        <h2>Recent Trades</h2>
+        <div id="history"></div>
+        <hr>
+        <a href="../index.html">Back to DEX Home</a>
+    </div>
+    <script>
+        // Configuration - Update this to point to your server
+        const API_BASE_URL = 'http://74.208.146.37:8080';
+        const CORS_PROXIES = [
+            'https://api.allorigins.win/raw?url=',           // Primary proxy
+            'https://corsproxy.io/?',                         // Backup proxy 1
+            'https://cors-anywhere.herokuapp.com/',          // Backup proxy 2
+        ];
+        
+        async function fetchWithProxy(url) {
+            // If not HTTPS to HTTP, use direct fetch
+            if (!(window.location.protocol === 'https:' && url.startsWith('http:'))) {
+                return fetch(url);
+            }
+            
+            // Try multiple CORS proxies
+            for (let i = 0; i < CORS_PROXIES.length; i++) {
+                try {
+                    const proxyUrl = CORS_PROXIES[i] + encodeURIComponent(url);
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) return response;
+                } catch (e) {
+                    console.log(`Proxy ${i + 1} failed:`, e.message);
+                }
+            }
+            throw new Error('All CORS proxies failed');
+        }
+        
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+        const base = getQueryParam('base') || 'PEK';
+        const quote = getQueryParam('quote') || 'SWAP.HIVE';
+        document.getElementById('pair-title').textContent = `${base} / ${quote}`;
+        document.getElementById('base-symbol').textContent = base;
+        document.getElementById('base-symbol2').textContent = base;
+        document.getElementById('quote-symbol').textContent = quote;
+        async function handleOrder(event) {
+            event.preventDefault();
+            const type = document.getElementById('order-type').value;
+            const amount = document.getElementById('order-amount').value;
+            const price = document.getElementById('order-price').value;
+            const username = prompt('Enter your Hive username:');
+            const statusDiv = document.getElementById('order-status');
+            statusDiv.textContent = 'Preparing order...';
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/order`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        base,
+                        quote,
+                        amount,
+                        price,
+                        side: type
+                    })
+                });
+                const data = await res.json();
+                if (!data.custom_json) {
+                    statusDiv.textContent = 'Backend error: ' + (data.error || 'No transaction data.');
+                    return false;
+                }
+                if (window.hive_keychain) {
+                    window.hive_keychain.requestCustomJson(
+                        username,
+                        'ssc-mainnet-hive',
+                        'Active',
+                        JSON.stringify(data.custom_json),
+                        `Place ${type} order: ${amount} ${base} @ ${price} ${quote}`,
+                        function(response) {
+                            if (response.success) {
+                                statusDiv.textContent = 'Order broadcasted!';
+                                fetchOrderBook();
+                                fetchHistory();
+                            } else {
+                                statusDiv.textContent = 'Keychain transaction failed or cancelled.';
+                            }
+                        }
+                    );
+                } else {
+                    statusDiv.textContent = 'Hive Keychain not installed!';
+                }
+            } catch (e) {
+                statusDiv.textContent = 'Order failed: ' + e.message;
+            }
+            return false;
+        }
+        async function fetchOrderBook() {
+            const orderbookDiv = document.getElementById('orderbook');
+            orderbookDiv.textContent = 'Loading order book...';
+            try {
+                const url = `${API_BASE_URL}/api/orderbook?base=${base}&quote=${quote}`;
+                const res = await fetchWithProxy(url);
+                const data = await res.json();
+                if (data.error) {
+                    orderbookDiv.textContent = 'Error: ' + data.error;
+                    return;
+                }
+                let html = '<b>Asks (Sell ' + base + ' for ' + quote + '):</b><br><table><tr><th>Price</th><th>Quantity</th></tr>';
+                (data.result?.asks || []).forEach(order => {
+                    html += `<tr><td>${order.price}</td><td>${order.quantity}</td></tr>`;
+                });
+                html += '</table><br><b>Bids (Buy ' + base + ' with ' + quote + '):</b><br><table><tr><th>Price</th><th>Quantity</th></tr>';
+                (data.result?.bids || []).forEach(order => {
+                    html += `<tr><td>${order.price}</td><td>${order.quantity}</td></tr>`;
+                });
+                html += '</table>';
+                orderbookDiv.innerHTML = html;
+            } catch (e) {
+                if (e.message.includes('Failed to fetch') || e.message.includes('CORS')) {
+                    orderbookDiv.innerHTML = '<div style="color:#b91c1c; padding:1rem; background:#fee2e2; border-radius:6px;"><strong>Connection Error</strong><br>Cannot connect to API server.<br><br>Solutions:<br>1. Access via http://geocities.ws/peakecoin/pekdex/<br>2. Set up HTTPS on your backend server</div>';
+                } else {
+                    orderbookDiv.textContent = 'Failed to load order book: ' + e.message;
+                }
+            }
+        }
+        async function fetchHistory() {
+            const historyDiv = document.getElementById('history');
+            historyDiv.textContent = 'Loading history...';
+            try {
+                const url = `${API_BASE_URL}/api/history?base=${base}&quote=${quote}`;
+                const res = await fetchWithProxy(url);
+                const data = await res.json();
+                if (data.error) {
+                    historyDiv.textContent = 'Error: ' + data.error;
+                    return;
+                }
+                let html = '<table><tr><th>Timestamp</th><th>Type</th><th>Price</th><th>Quantity</th></tr>';
+                (data.result || []).forEach(tx => {
+                    html += `<tr><td>${new Date(tx.timestamp * 1000).toLocaleString()}</td><td>${tx.type}</td><td>${tx.price}</td><td>${tx.quantity}</td></tr>`;
+                });
+                html += '</table>';
+                historyDiv.innerHTML = html;
+            } catch (e) {
+                historyDiv.textContent = 'Failed to load history: ' + e.message;
+            }
+        }
+        fetchOrderBook();
+        fetchHistory();
+    </script>
+</body>
+</html>

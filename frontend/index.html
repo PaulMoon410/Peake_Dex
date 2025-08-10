@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEK Dex - Home</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(120deg, #f8f8fa 0%, #e0e7ff 100%);
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: #2d3748;
+            color: #fff;
+            padding: 2rem 1rem 1rem 1rem;
+            text-align: center;
+            border-bottom-left-radius: 30px;
+            border-bottom-right-radius: 30px;
+            box-shadow: 0 2px 12px rgba(44,62,80,0.08);
+        }
+        header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+        }
+        header p {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #cbd5e1;
+        }
+        .container {
+            max-width: 700px;
+            margin: 2.5rem auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 4px 24px rgba(44,62,80,0.10);
+            padding: 2.5rem 2rem 2rem 2rem;
+        }
+        .pair-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.2rem;
+            margin-top: 2rem;
+            justify-content: center;
+        }
+        .pair-card {
+            background: #f1f5fa;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(44,62,80,0.06);
+            padding: 1.5rem 2rem;
+            min-width: 180px;
+            text-align: center;
+            transition: box-shadow 0.2s, background 0.2s;
+        }
+        .pair-card:hover {
+            background: #e0e7ff;
+            box-shadow: 0 4px 16px rgba(44,62,80,0.12);
+        }
+        .pair-link {
+            text-decoration: none;
+            color: #3730a3;
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            display: block;
+        }
+        .pair-link:hover {
+            color: #6366f1;
+        }
+        @media (max-width: 700px) {
+            .container { padding: 1rem; }
+            header { padding: 1.5rem 0.5rem 1rem 0.5rem; }
+            .pair-list { flex-direction: column; gap: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PEK Dex</h1>
+        <p>Welcome! Select a trading pair to view its order book, trades, and place orders.</p>
+    </header>
+    <div class="container">
+        <h2>Available Trading Pairs</h2>
+        <div class="pair-list" id="pair-list"></div>
+        <div id="error-message" style="color:#b91c1c; margin-top:1.5rem; text-align:center; display:none;"></div>
+    </div>
+    <script>
+        // Configuration - Update this to point to your server
+        const API_BASE_URL = 'http://74.208.146.37:8080';
+        const CORS_PROXIES = [
+            'https://api.allorigins.win/raw?url=',           // Primary proxy
+            'https://corsproxy.io/?',                         // Backup proxy 1
+            'https://cors-anywhere.herokuapp.com/',          // Backup proxy 2 (requires demo access)
+        ];
+        
+        async function fetchPairs() {
+            // Check if we're on HTTPS and trying to access HTTP
+            if (window.location.protocol === 'https:' && API_BASE_URL.startsWith('http:')) {
+                for (let i = 0; i < CORS_PROXIES.length; i++) {
+                    try {
+                        // Use CORS proxy to bypass mixed content restrictions
+                        const proxyUrl = CORS_PROXIES[i] + encodeURIComponent(`${API_BASE_URL}/api/pairs`);
+                        const response = await fetch(proxyUrl);
+                        if (!response.ok) throw new Error('Proxy failed: ' + response.status);
+                        const data = await response.json();
+                        return data.pairs || data;
+                    } catch (e) {
+                        console.log(`Proxy ${i + 1} failed:`, e.message);
+                        if (i === CORS_PROXIES.length - 1) {
+                            // All proxies failed, show error and use mock data
+                            showError('All CORS proxies failed. Using demo data.', 
+                                     'Tried: ' + CORS_PROXIES.join(', ') + '\n\nAlternatives:\n1. Access via http://geocities.ws/peakecoin/pekdex/\n2. Set up HTTPS on your backend');
+                            return getMockPairs();
+                        }
+                    }
+                }
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pairs`);
+                if (!response.ok) throw new Error('Failed to fetch pairs: ' + response.status + ' ' + response.statusText);
+                const data = await response.json();
+                // Support both {pairs: [...]} and [...] formats
+                return data.pairs || data;
+            } catch (e) {
+                showError('Error fetching pairs: ' + e.message, e.stack);
+                return getMockPairs(); // Fallback to mock data
+            }
+        }
+        
+        function getMockPairs() {
+            // Mock data for demonstration when API is unavailable
+            return [
+                {"base": "PEK", "quote": "SWAP.HIVE"},
+                {"base": "PEK", "quote": "SWAP.BTC"},
+                {"base": "PEK", "quote": "SWAP.LTC"},
+                {"base": "PEK", "quote": "SWAP.ETH"},
+                {"base": "PEK", "quote": "SWAP.DOGE"}
+            ];
+        }
+        function renderPairList(pairs) {
+            const list = document.getElementById('pair-list');
+            list.innerHTML = '';
+            pairs.forEach(pair => {
+                // Expecting pair to be { base: 'PEK', quote: 'SWAP.HIVE' } or similar
+                const card = document.createElement('div');
+                card.className = 'pair-card';
+                const link = document.createElement('a');
+                link.className = 'pair-link';
+                link.href = `pairs/pair.html?base=${encodeURIComponent(pair.base)}&quote=${encodeURIComponent(pair.quote)}`;
+                link.textContent = `${pair.base} / ${pair.quote}`;
+                card.appendChild(link);
+                list.appendChild(card);
+            });
+        }
+        function showError(message, code) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML = `<strong>${message}</strong>` + (code ? `<pre style='font-size:0.9em; background:#fee2e2; color:#7f1d1d; padding:0.5em; border-radius:6px; margin-top:0.5em;'>${code}</pre>` : '');
+        }
+        async function init() {
+            const pairs = await fetchPairs();
+            if (pairs.length > 0) {
+                renderPairList(pairs);
+            }
+        }
+        init();
+    </script>
+</body>
+</html>

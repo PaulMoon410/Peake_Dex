@@ -1,0 +1,17 @@
+[Unit]
+Description=PEK Dex Backend
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/home/ubuntu/peake-dex-backend
+Environment=PATH=/home/ubuntu/peake-dex-backend/venv/bin
+Environment=PEAKECOIN_MATIC_ACTIVE_KEY=your_key_here
+Environment=PEAKECOIN_BNB_ACTIVE_KEY=your_key_here
+Environment=PEAKECOIN_ACTIVE_KEY=your_key_here
+ExecStart=/home/ubuntu/peake-dex-backend/venv/bin/python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
