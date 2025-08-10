@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 PaulMoon410
+Copyright (c) 2025 PEK DEX Project
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,27 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Additional Terms
+
+### Blockchain Disclaimer
+This software interacts with the Hive blockchain and cryptocurrency tokens. 
+Users acknowledge that:
+
+1. **Cryptocurrency Risk**: Trading cryptocurrencies involves significant financial risk
+2. **No Financial Advice**: This software does not constitute financial or investment advice
+3. **User Responsibility**: Users are solely responsible for their trading decisions
+4. **Regulatory Compliance**: Users must comply with their local laws and regulations
+5. **Private Key Security**: Users are responsible for securing their private keys and accounts
+6. **No Warranty**: The software is provided without warranty of any kind
+
+### Security Notice
+- Always verify transactions before signing
+- Keep your private keys secure and never share them
+- Test with small amounts before large transactions
+- Understand the risks of decentralized trading
+- Ensure you're using the official software and not malicious copies
+
+### Limitation of Liability
+In no event shall the authors or copyright holders be liable for any trading losses,
+security breaches, or other damages arising from the use of this software.
