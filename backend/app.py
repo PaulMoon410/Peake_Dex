@@ -40,22 +40,26 @@ PAIR_ACCOUNT_MAP = {
 DEFAULT_ACCOUNT = 'peakecoin.matic'
 
 def init_db():
-    if not os.path.exists(DB_PATH):
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute('''CREATE TABLE orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            base TEXT,
-            quote TEXT,
-            amount TEXT,
-            price TEXT,
-            side TEXT,
-            status TEXT DEFAULT 'pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )''')
-        conn.commit()
-        conn.close()
+    try:
+        if not os.path.exists(DB_PATH):
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute('''CREATE TABLE orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT,
+                base TEXT,
+                quote TEXT,
+                amount TEXT,
+                price TEXT,
+                side TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )''')
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        print(f"[ERROR] Failed to initialize DB: {e}")
+        import traceback; traceback.print_exc()
 
 init_db()
 
@@ -106,6 +110,8 @@ def upload_orders_to_ftp():
             ftp.storbinary('STOR orders.json', io.BytesIO(orders_json.encode('utf-8')))
         return True, 'Upload successful.'
     except Exception as e:
+        print(f"[ERROR] FTP upload failed: {e}")
+        import traceback; traceback.print_exc()
         return False, str(e)
 
 def download_orders_from_ftp():
@@ -120,6 +126,8 @@ def download_orders_from_ftp():
             r.seek(0)
             return json.loads(r.read().decode('utf-8')), None
     except Exception as e:
+        print(f"[ERROR] FTP download failed: {e}")
+        import traceback; traceback.print_exc()
         return None, str(e)
 
 def erase_orders_on_ftp():
@@ -132,6 +140,8 @@ def erase_orders_on_ftp():
             ftp.delete('orders.json')
         return True, 'Deleted orders.json on FTP.'
     except Exception as e:
+        print(f"[ERROR] FTP erase failed: {e}")
+        import traceback; traceback.print_exc()
         return False, str(e)
 
 @app.route('/api/pairs')
@@ -202,13 +212,18 @@ def api_order():
     price = str(data.get('price'))
     side = data.get('side', 'sell').lower()  # 'buy' or 'sell'
     # Store order in DB
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''INSERT INTO orders (username, base, quote, amount, price, side) VALUES (?, ?, ?, ?, ?, ?)''',
-              (username, base, quote, amount, price, side))
-    conn.commit()
-    order_id = c.lastrowid
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('''INSERT INTO orders (username, base, quote, amount, price, side) VALUES (?, ?, ?, ?, ?, ?)''',
+                  (username, base, quote, amount, price, side))
+        conn.commit()
+        order_id = c.lastrowid
+        conn.close()
+    except Exception as e:
+        print(f"[ERROR] Failed to insert order: {e}")
+        import traceback; traceback.print_exc()
+        return jsonify({"error": f"Failed to insert order: {str(e)}"}), 500
     custom_json = {
         "contractName": "market",
         "contractAction": side,
