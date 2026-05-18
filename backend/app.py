@@ -451,6 +451,7 @@ def api_ftp_import():
     conn.close()
     return jsonify({'success': True, 'imported': imported})
 
+
 def restore_orders_from_ftp_on_startup():
     data, err = download_orders_from_ftp()
     if err or not data or 'orders' not in data:
@@ -474,16 +475,6 @@ def restore_orders_from_ftp_on_startup():
                   ))
     conn.commit()
     conn.close()
-
-# Call restore on startup
-restore_orders_from_ftp_on_startup()
-
-# Set FTP config for Geocities
-save_ftp_config({
-    'host': 'ftp.geocities.com',
-    'user': 'peakecoin',
-    'password': 'Peake410'
-})
 
 # --- Hive Engine order matching and execution ---
 
@@ -652,6 +643,7 @@ def execute_hive_engine_trade(base, quote, amount, price, account, active_key, a
     print(f"[PLACEHOLDER] Trade logged successfully")
     return "placeholder_success"
 
+
 # Background thread to run the matcher every 10 seconds
 def start_matcher_thread():
     def run():
@@ -659,9 +651,6 @@ def start_matcher_thread():
             match_and_execute_orders()
             time.sleep(10)
     threading.Thread(target=run, daemon=True).start()
-
-# Start matcher on startup
-start_matcher_thread()
 
 if __name__ == '__main__':
     print("Starting PEK Dex Backend...")
@@ -674,4 +663,13 @@ if __name__ == '__main__':
     print("  GET  /api/orders")
     print("  GET  /api/price")
     print("  POST /api/validate_account")
+    # Only run startup code if this is the main process
+    restore_orders_from_ftp_on_startup()
+    # Set FTP config for Geocities (move to env/config in production!)
+    save_ftp_config({
+        'host': 'ftp.geocities.com',
+        'user': 'peakecoin',
+        'password': 'Peake410'
+    })
+    start_matcher_thread()
     app.run(host='0.0.0.0', port=8080)
