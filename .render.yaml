@@ -5,7 +5,6 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python api.py
-    rootDir: backend
     envVars:
       - key: PEAKECOIN_MATIC_ACTIVE_KEY
         value: "your_key_here"
