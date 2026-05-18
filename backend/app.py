@@ -652,9 +652,20 @@ def start_matcher_thread():
             time.sleep(10)
     threading.Thread(target=run, daemon=True).start()
 
+import os
+def is_render():
+    return os.environ.get('RENDER', '').lower() == 'true' or os.environ.get('RENDER', '').lower() == '1'
+
+def get_ftp_env_config():
+    host = os.environ.get('FTP_HOST')
+    user = os.environ.get('FTP_USER')
+    password = os.environ.get('FTP_PASSWORD')
+    if host and user and password:
+        return {'host': host, 'user': user, 'password': password}
+    return None
+
 if __name__ == '__main__':
     print("Starting PEK Dex Backend...")
-    print("Server will be available at: http://74.208.146.37:8080")
     print("API endpoints:")
     print("  GET  /api/pairs")
     print("  POST /api/order") 
@@ -663,13 +674,29 @@ if __name__ == '__main__':
     print("  GET  /api/orders")
     print("  GET  /api/price")
     print("  POST /api/validate_account")
-    # Only run startup code if this is the main process
-    restore_orders_from_ftp_on_startup()
-    # Set FTP config for Geocities (move to env/config in production!)
-    save_ftp_config({
-        'host': 'ftp.geocities.com',
-        'user': 'peakecoin',
-        'password': 'Peake410'
-    })
-    start_matcher_thread()
-    app.run(host='0.0.0.0', port=8080)
+    try:
+        # Only run FTP restore and matcher if not on Render
+        if not is_render():
+            restore_orders_from_ftp_on_startup()
+            # Set FTP config for Geocities (move to env/config in production!)
+            save_ftp_config({
+                'host': 'ftp.geocities.com',
+                'user': 'peakecoin',
+                'password': 'Peake410'
+            })
+        else:
+            # On Render, set FTP config only if env vars are present
+            ftp_env = get_ftp_env_config()
+            if ftp_env:
+                save_ftp_config(ftp_env)
+        start_matcher_thread()
+    except Exception as e:
+        print(f"[STARTUP ERROR] {e}")
+        import traceback; traceback.print_exc()
+    # Use $PORT if set (Render), else default to 8080
+    port = int(os.environ.get('PORT', 8080))
+    try:
+        app.run(host='0.0.0.0', port=port)
+    except Exception as e:
+        print(f"[FLASK ERROR] {e}")
+        import traceback; traceback.print_exc()
