@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: pekdex-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api.py
+    rootDir: backend
+    envVars:
+      - key: PEAKECOIN_MATIC_ACTIVE_KEY
+        value: "your_key_here"
+      - key: PEAKECOIN_BNB_ACTIVE_KEY
+        value: "your_key_here"
+      - key: PEAKECOIN_ACTIVE_KEY
+        value: "your_key_here"
