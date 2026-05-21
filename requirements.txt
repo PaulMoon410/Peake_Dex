@@ -1,0 +1,2 @@
+# This file points to the actual requirements.txt in the backend directory
+-r backend/requirements.txt
