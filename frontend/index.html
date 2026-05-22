@@ -7,36 +7,40 @@
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(120deg, #f8f8fa 0%, #e0e7ff 100%);
+            background: linear-gradient(135deg, #ffd600 0%, #e03a3e 50%, #000 100%);
             margin: 0;
             padding: 0;
         }
         header {
-            background: #2d3748;
+            background: linear-gradient(90deg, #ffd600 0%, #e03a3e 50%, #000 100%);
             color: #fff;
             padding: 2rem 1rem 1rem 1rem;
             text-align: center;
             border-bottom-left-radius: 30px;
             border-bottom-right-radius: 30px;
-            box-shadow: 0 2px 12px rgba(44,62,80,0.08);
+            box-shadow: 0 2px 12px rgba(44,62,80,0.12);
+            border-bottom: 8px solid #ffd600;
         }
         header h1 {
             margin: 0 0 0.5rem 0;
-            font-size: 2.5rem;
+            font-size: 2.7rem;
             letter-spacing: 2px;
+            text-shadow: 2px 2px 0 #000, 4px 4px 0 #e03a3e;
         }
         header p {
             margin: 0;
             font-size: 1.2rem;
-            color: #cbd5e1;
+            color: #fffbe7;
+            text-shadow: 1px 1px 0 #000;
         }
         .container {
             max-width: 700px;
             margin: 2.5rem auto;
-            background: #fff;
+            background: #fffbe7;
             border-radius: 18px;
-            box-shadow: 0 4px 24px rgba(44,62,80,0.10);
+            box-shadow: 0 4px 24px rgba(44,62,80,0.18);
             padding: 2.5rem 2rem 2rem 2rem;
+            border: 2px solid #e03a3e;
         }
         .pair-list {
             display: flex;
@@ -46,28 +50,32 @@
             justify-content: center;
         }
         .pair-card {
-            background: #f1f5fa;
+            background: linear-gradient(135deg, #ffd600 60%, #e03a3e 100%);
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(44,62,80,0.06);
+            box-shadow: 0 2px 8px rgba(44,62,80,0.10);
             padding: 1.5rem 2rem;
             min-width: 180px;
             text-align: center;
-            transition: box-shadow 0.2s, background 0.2s;
+            transition: box-shadow 0.2s, background 0.2s, transform 0.2s;
+            border: 2px solid #000;
         }
         .pair-card:hover {
-            background: #e0e7ff;
-            box-shadow: 0 4px 16px rgba(44,62,80,0.12);
+            background: linear-gradient(135deg, #e03a3e 60%, #ffd600 100%);
+            box-shadow: 0 4px 16px rgba(44,62,80,0.18);
+            transform: scale(1.04) rotate(-2deg);
         }
         .pair-link {
             text-decoration: none;
-            color: #3730a3;
+            color: #000;
             font-size: 1.2rem;
-            font-weight: 600;
+            font-weight: 700;
             letter-spacing: 1px;
             display: block;
+            text-shadow: 1px 1px 0 #fffbe7, 2px 2px 0 #ffd600;
         }
         .pair-link:hover {
-            color: #6366f1;
+            color: #e03a3e;
+            text-shadow: 1px 1px 0 #fffbe7, 2px 2px 0 #000;
         }
         @media (max-width: 700px) {
             .container { padding: 1rem; }
