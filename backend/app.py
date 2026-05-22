@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 import sqlite3
@@ -12,7 +12,17 @@ from beem import Hive
 from beem.account import Account
 from beem.exceptions import AccountDoesNotExistsException
 
-app = Flask(__name__)
+import pathlib
+BASE_DIR = pathlib.Path(__file__).parent.parent.resolve()
+FRONTEND_DIR = BASE_DIR / 'frontend'
+app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path='')
+@app.route('/')
+@app.route('/<path:path>')
+def serve_frontend(path='index.html'):
+    # Serve index.html for root or any path that doesn't match an API route or static file
+    if path != "" and (FRONTEND_DIR / path).exists():
+        return send_from_directory(FRONTEND_DIR, path)
+    return send_from_directory(FRONTEND_DIR, 'index.html')
 CORS(app)
 
 SUPPORTED_PAIRS = [
